@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Panel de mensajes · Editor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#14161a;
+    --panel:#1c1f26;
+    --panel-2:#22262f;
+    --line:#31353f;
+    --amber:#e8a93c;
+    --amber-dim:#7a5c22;
+    --teal:#2dd4bf;
+    --text:#f5f5f0;
+    --muted:#8b8f99;
+    --danger:#e0654f;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:radial-gradient(1200px 800px at 20% -10%, #1b2028 0%, var(--bg) 55%);
+    color:var(--text);
+    font-family:'Inter',system-ui,sans-serif;
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    padding:40px 20px 80px;
+  }
+  .wrap{width:100%;max-width:620px;}
+  .eyebrow{
+    font-family:'Space Mono',monospace;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    font-size:12px;
+    color:var(--teal);
+    margin:0 0 6px;
+  }
+  h1{
+    font-family:'Archivo Black',sans-serif;
+    font-weight:400;
+    font-size:clamp(28px,5vw,38px);
+    margin:0 0 28px;
+    line-height:1.05;
+  }
+  .card{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:22px 22px 24px;
+    margin-bottom:18px;
+  }
+  .card h2{
+    font-size:13px;
+    text-transform:uppercase;
+    letter-spacing:.08em;
+    color:var(--muted);
+    margin:0 0 14px;
+    font-weight:600;
+  }
+  .code-row{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    background:var(--panel-2);
+    border:1px dashed var(--amber-dim);
+    border-radius:10px;
+    padding:14px 16px;
+  }
+  .code{
+    font-family:'Space Mono',monospace;
+    font-size:20px;
+    letter-spacing:.06em;
+    color:var(--amber);
+    word-break:break-all;
+    flex:1;
+  }
+  button{
+    font-family:'Inter',sans-serif;
+    font-weight:600;
+    font-size:14px;
+    border:none;
+    border-radius:8px;
+    padding:11px 16px;
+    cursor:pointer;
+    transition:transform .12s ease, opacity .12s ease;
+  }
+  button:active{transform:scale(.97);}
+  .btn-amber{background:var(--amber);color:#241a05;}
+  .btn-teal{background:var(--teal);color:#04231f;}
+  .btn-ghost{background:transparent;color:var(--text);border:1px solid var(--line);}
+  .btn-danger{background:transparent;color:var(--danger);border:1px solid #5c2f28;}
+  .btn-copy{background:transparent;color:var(--amber);border:1px solid var(--amber-dim);padding:9px 12px;font-size:13px;white-space:nowrap;}
+  .hint{font-size:13px;color:var(--muted);margin:12px 0 0;line-height:1.5;}
+  .other-code{display:flex;gap:10px;margin-top:14px;}
+  .other-code input{
+    flex:1;background:var(--panel-2);border:1px solid var(--line);border-radius:8px;
+    color:var(--text);padding:10px 12px;font-family:'Space Mono',monospace;font-size:13px;
+  }
+  textarea{
+    width:100%;
+    min-height:140px;
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    border-radius:10px;
+    color:var(--text);
+    font-family:'Inter',sans-serif;
+    font-size:16px;
+    line-height:1.5;
+    padding:14px;
+    resize:vertical;
+  }
+  textarea:focus, .other-code input:focus{outline:2px solid var(--teal);outline-offset:1px;}
+  .actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px;}
+  .status-line{
+    display:flex;align-items:center;gap:10px;margin-top:16px;font-size:13px;color:var(--muted);
+  }
+  .dot{width:9px;height:9px;border-radius:50%;background:var(--muted);flex-shrink:0;}
+  .dot.live{background:var(--teal);box-shadow:0 0 0 4px rgba(45,212,191,.15);}
+  .dot.paused{background:var(--amber);box-shadow:0 0 0 4px rgba(232,169,60,.15);}
+  .toast{
+    position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);
+    background:var(--panel-2);border:1px solid var(--line);color:var(--text);
+    padding:10px 18px;border-radius:999px;font-size:13px;opacity:0;
+    transition:opacity .25s ease, transform .25s ease;pointer-events:none;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <p class="eyebrow">Pantalla de anuncios</p>
+    <h1>Panel de mensajes</h1>
+
+    <div class="card">
+      <h2>Código de vínculo</h2>
+      <div class="code-row">
+        <span class="code" id="roomCode">generando…</span>
+        <button class="btn-copy" id="copyBtn">Copiar</button>
+      </div>
+      <p class="hint">Ingresa este código una sola vez en la pantalla de exhibición para vincularla. Después queda guardada ahí y ya no vuelves a tocarlo.</p>
+      <div class="other-code">
+        <input type="text" id="otherCode" placeholder="¿Ya tienes un código de otra vez? Pégalo aquí">
+        <button class="btn-ghost" id="useOtherCode">Usar</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Mensaje</h2>
+      <textarea id="msgInput" placeholder="Escribe aquí el mensaje que se verá en la pantalla…"></textarea>
+      <div class="actions">
+        <button class="btn-amber" id="publishBtn">Publicar mensaje</button>
+        <button class="btn-teal" id="resumeBtn">Reanudar</button>
+        <button class="btn-ghost" id="pauseBtn">Pausar pantalla</button>
+        <button class="btn-danger" id="clearBtn">Borrar mensaje</button>
+      </div>
+      <div class="status-line">
+        <span class="dot" id="statusDot"></span>
+        <span id="statusText">Cargando estado…</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+<script>
+const KV = "https://kvdb.io";
+let bucket = localStorage.getItem("pantalla_bucket");
+
+const roomCodeEl = document.getElementById("roomCode");
+const msgInput = document.getElementById("msgInput");
+const statusDot = document.getElementById("statusDot");
+const statusText = document.getElementById("statusText");
+const toast = document.getElementById("toast");
+
+function showToast(text){
+  toast.textContent = text;
+  toast.classList.add("show");
+  setTimeout(()=>toast.classList.remove("show"), 2200);
+}
+
+async function createBucket(){
+  const res = await fetch(KV + "/", {
+    method:"POST",
+    headers:{"Content-Type":"application/x-www-form-urlencoded"},
+    body:"email=pantalla" + Date.now() + "@example.com"
+  });
+  return (await res.text()).trim();
+}
+
+async function getState(){
+  try{
+    const res = await fetch(`${KV}/${bucket}/estado?_=${Date.now()}`);
+    if(!res.ok) return null;
+    const raw = await res.text();
+    return JSON.parse(raw);
+  }catch(e){ return null; }
+}
+
+async function setState(state){
+  await fetch(`${KV}/${bucket}/estado`, {
+    method:"POST",
+    body: JSON.stringify(state)
+  });
+}
+
+function renderStatus(state){
+  if(!state){
+    statusDot.className = "dot";
+    statusText.textContent = "Sin datos todavía. Publica un mensaje para empezar.";
+    return;
+  }
+  if(state.paused){
+    statusDot.className = "dot paused";
+    statusText.textContent = "En pausa · la pantalla muestra el aviso de inactividad.";
+  } else {
+    statusDot.className = "dot live";
+    statusText.textContent = "En vivo desde " + new Date(state.updatedAt).toLocaleTimeString('es-PE');
+  }
+}
+
+async function init(){
+  if(!bucket){
+    roomCodeEl.textContent = "generando…";
+    bucket = await createBucket();
+    localStorage.setItem("pantalla_bucket", bucket);
+  }
+  roomCodeEl.textContent = bucket;
+  const state = await getState();
+  if(state && state.text) msgInput.value = state.text;
+  renderStatus(state);
+}
+
+document.getElementById("copyBtn").addEventListener("click", ()=>{
+  navigator.clipboard.writeText(bucket);
+  showToast("Código copiado");
+});
+
+document.getElementById("useOtherCode").addEventListener("click", async ()=>{
+  const val = document.getElementById("otherCode").value.trim();
+  if(!val) return;
+  bucket = val;
+  localStorage.setItem("pantalla_bucket", bucket);
+  roomCodeEl.textContent = bucket;
+  const state = await getState();
+  if(state && state.text) msgInput.value = state.text;
+  renderStatus(state);
+  showToast("Código actualizado");
+});
+
+document.getElementById("publishBtn").addEventListener("click", async ()=>{
+  const state = { text: msgInput.value, paused:false, updatedAt: Date.now() };
+  await setState(state);
+  renderStatus(state);
+  showToast("Mensaje publicado");
+});
+
+document.getElementById("pauseBtn").addEventListener("click", async ()=>{
+  const state = { text: msgInput.value, paused:true, updatedAt: Date.now() };
+  await setState(state);
+  renderStatus(state);
+  showToast("Pantalla en pausa");
+});
+
+document.getElementById("resumeBtn").addEventListener("click", async ()=>{
+  const state = { text: msgInput.value, paused:false, updatedAt: Date.now() };
+  await setState(state);
+  renderStatus(state);
+  showToast("Pantalla reanudada");
+});
+
+document.getElementById("clearBtn").addEventListener("click", async ()=>{
+  msgInput.value = "";
+  const state = { text:"", paused:true, updatedAt: Date.now() };
+  await setState(state);
+  renderStatus(state);
+  showToast("Mensaje borrado");
+});
+
+init();
+</script>
+</body>
+</html>
