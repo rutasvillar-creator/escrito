@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' https://drive.google.com https://*.googleusercontent.com data:; connect-src 'self' https://docs.google.com https://*.googleusercontent.com; frame-ancestors 'none'; base-uri 'self'; object-src 'none';">
+<title>Base de Datos de Platos</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: Arial, Helvetica, sans-serif;
+    background: #f2f2f2;
+    margin: 0;
+    padding: 0;
+    color: #222;
+  }
+  header {
+    background: #1e293b;
+    color: #fff;
+    padding: 16px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  header h1 {
+    font-size: 20px;
+    margin: 0;
+  }
+  #status {
+    font-size: 12px;
+    color: #cbd5e1;
+  }
+  #refreshBtn {
+    background: #334155;
+    color: #fff;
+    border: none;
+    padding: 8px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+  }
+  #refreshBtn:hover { background: #475569; }
+
+  #barraSuperior {
+    background: #fff;
+    padding: 14px 20px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    align-items: flex-end;
+    border-bottom: 1px solid #ddd;
+    position: sticky;
+    top: 0;
+    z-index: 20;
+  }
+  .filtro-grupo {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .filtro-grupo label {
+    font-size: 12px;
+    font-weight: bold;
+    color: #555;
+    text-transform: uppercase;
+  }
+  .filtro-grupo select {
+    padding: 7px 10px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    font-size: 14px;
+    min-width: 160px;
+  }
+  #buscador {
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    font-size: 14px;
+    min-width: 220px;
+    flex: 1;
+  }
+  #limpiarFiltros {
+    background: none;
+    border: 1px solid #999;
+    border-radius: 6px;
+    padding: 7px 12px;
+    cursor: pointer;
+    font-size: 13px;
+    height: 34px;
+  }
+  #limpiarFiltros:hover { background: #eee; }
+
+  #navSecciones {
+    background: #0f172a;
+    padding: 8px 20px;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    position: sticky;
+    top: 68px;
+    z-index: 19;
+  }
+  #navSecciones a {
+    color: #cbd5e1;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: bold;
+    padding: 6px 12px;
+    border-radius: 20px;
+    background: #1e293b;
+  }
+  #navSecciones a:hover { background: #334155; color: #fff; }
+
+  #contador {
+    padding: 10px 20px 0 20px;
+    font-size: 13px;
+    color: #555;
+  }
+
+  .seccion {
+    padding: 24px 20px 10px 20px;
+    scroll-margin-top: 120px;
+  }
+  .seccion-titulo {
+    font-size: 22px;
+    font-weight: bold;
+    color: #1e293b;
+    border-bottom: 3px solid #2563eb;
+    padding-bottom: 6px;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+  .seccion-titulo .conteo {
+    font-size: 13px;
+    font-weight: normal;
+    color: #888;
+  }
+  .seccion-vacia {
+    font-size: 13px;
+    color: #999;
+    font-style: italic;
+    padding: 10px 0 20px 0;
+  }
+
+  #contenedorSecciones {
+    padding-bottom: 90px;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 16px;
+  }
+
+  .card {
+    background: #fff;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+    display: flex;
+    flex-direction: column;
+    transition: box-shadow 0.3s, transform 0.3s;
+  }
+  .card.resaltado {
+    box-shadow: 0 0 0 3px #2563eb, 0 4px 14px rgba(37,99,235,0.4);
+    transform: translateY(-2px);
+  }
+  .card-imagen {
+    width: 100%;
+    height: 170px;
+    background: #e5e7eb;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    cursor: pointer;
+  }
+  .card-imagen img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .card-imagen .sin-imagen {
+    font-size: 12px;
+    color: #888;
+    text-align: center;
+    padding: 10px;
+  }
+  .card-body {
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .campo {
+    font-size: 14px;
+    line-height: 1.3;
+  }
+  .campo .etiqueta {
+    font-size: 10px;
+    font-weight: bold;
+    color: #888;
+    text-transform: uppercase;
+    display: block;
+  }
+  .campo.principal {
+    font-size: 16px;
+    font-weight: bold;
+    color: #111;
+  }
+  .badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 2px;
+  }
+  .badge {
+    background: #eef2ff;
+    color: #3730a3;
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 20px;
+    font-weight: bold;
+  }
+  .marca-temporal {
+    font-size: 10px;
+    color: #aaa;
+    margin-top: 4px;
+  }
+
+  .acciones {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid #eee;
+  }
+  .accion-btn {
+    flex: 1;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 0;
+    font-size: 16px;
+    cursor: pointer;
+    background: #d1d5db;
+    color: #6b7280;
+    transition: transform 0.15s;
+  }
+  .accion-btn:hover { transform: scale(1.06); }
+  .accion-btn:disabled { opacity: 0.5; cursor: wait; transform: none; }
+  .accion-btn.activo.publicar { background: #16a34a; color: #fff; }
+  .accion-btn.activo.ocultar { background: #eab308; color: #fff; }
+  .accion-btn.activo.eliminar { background: #dc2626; color: #fff; }
+
+  #mensaje {
+    padding: 40px 20px;
+    text-align: center;
+    color: #777;
+    font-size: 14px;
+  }
+
+  #addBtn {
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    width: 58px;
+    height: 58px;
+    border-radius: 50%;
+    background: #2563eb;
+    color: #fff;
+    font-size: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.3);
+    z-index: 30;
+  }
+  #addBtn:hover { background: #1d4ed8; }
+
+  #modalOverlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  #modalOverlay img {
+    max-width: 95%;
+    max-height: 90%;
+    border-radius: 6px;
+  }
+  #modalOverlay .cerrar {
+    position: absolute;
+    top: 16px;
+    right: 24px;
+    color: #fff;
+    font-size: 32px;
+    cursor: pointer;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Base de Datos de Platos</h1>
+  <div id="status">Cargando...</div>
+  <button id="refreshBtn">Actualizar ahora</button>
+</header>
+
+<div id="barraSuperior"></div>
+<div id="navSecciones"></div>
+
+<div id="contador"></div>
+<div id="contenedorSecciones"></div>
+<div id="mensaje" style="display:none;"></div>
+
+<a id="addBtn" href="https://forms.gle/DUYJTtZfSmVYfnJC7" target="_blank" title="Agregar nuevo producto">+</a>
+
+<div id="modalOverlay">
+  <span class="cerrar">&times;</span>
+  <img id="modalImg" src="" alt="Imagen ampliada">
+</div>
+
+<script>
+const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSjtYtjfomq2CTcir0XxiqlQ-Qv5fwQh-Q6p7IUGc9F6CbQ0ftIrHBsRz-RP_LzfEYftpQun2zY_tT2/pub?gid=282732789&single=true&output=csv";
+const AUTO_REFRESH_MS = 30000;
+
+// --- Configuracion del backend (Apps Script) para publicar / ocultar / eliminar ---
+// Pega aqui la URL que termina en /exec despues de desplegar apps-script-backend.gs
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxhSyHaiSFsxOn0WMPGP0ovMonf3i4D5zHlgM03MKhGaa7h1JRBlSQEE4hlVTdu0JQc/exec";
+// Debe ser EXACTAMENTE la misma clave que pusiste en CLAVE_SECRETA dentro del Apps Script
+const CLAVE_SECRETA = "M4rietta";
+
+// Orden fijo de secciones, inspirado en el formulario
+const ORDEN_CATEGORIAS = ["ENTRADAS", "PLATOS", "EXTRAS"];
+// Opciones fijas del filtro de proteina, inspiradas en el formulario
+const OPCIONES_PROTEINA = ["CARNE", "RES", "POLLO", "PESCADO", "SOLO VERDURAS"];
+
+let allData = [];
+let headers = [];
+let imageCol = null;
+let timeCol = null;
+let categoriaCol = null;
+let proteinaCol = null;
+let estadoCol = null;
+let filterColsExtra = [];
+let displayCols = [];
+let activeFilters = {};
+let searchTerm = '';
+
+// ---------- SEGURIDAD: escapar datos antes de insertarlos como HTML ----------
+function escapeHTML(str) {
+  if (str === null || str === undefined) return '';
+  return str.toString()
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+// Solo se aceptan links de Google Drive como imagen/enlace; cualquier otra cosa (javascript:, data:, etc.) se descarta
+function esLinkDriveSeguro(url) {
+  if (!url) return false;
+  return /^https:\/\/(drive|docs)\.google\.com\//i.test(url.trim());
+}
+
+// ---------- CSV PARSER ----------
+function parseCSV(text) {
+  const rows = [];
+  let row = [];
+  let field = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inQuotes) {
+      if (c === '"') {
+        if (text[i + 1] === '"') { field += '"'; i++; }
+        else { inQuotes = false; }
+      } else {
+        field += c;
+      }
+    } else {
+      if (c === '"') {
+        inQuotes = true;
+      } else if (c === ',') {
+        row.push(field); field = '';
+      } else if (c === '\r') {
+        // ignorar
+      } else if (c === '\n') {
+        row.push(field); field = '';
+        rows.push(row); row = [];
+      } else {
+        field += c;
+      }
+    }
+  }
+  if (field.length > 0 || row.length > 0) { row.push(field); rows.push(row); }
+  return rows.filter(r => r.some(f => f.trim() !== ''));
+}
+
+function rowsToObjects(rows) {
+  const head = rows[0].map(h => h.trim());
+  const data = rows.slice(1).map(r => {
+    const obj = {};
+    head.forEach((h, idx) => { obj[h] = (r[idx] || '').trim(); });
+    return obj;
+  });
+  return { head, data };
+}
+
+// ---------- DETECCION DE COLUMNAS ----------
+function analizarColumnas(head, data) {
+  const imgCol = head.find(h => /imagen|image|foto/i.test(h)) || null;
+  const tsCol = head.find(h => /marca temporal|timestamp|fecha\s*y\s*hora/i.test(h)) || null;
+  const catCol = head.find(h => /^categoria$/i.test(h.trim())) || null;
+  const protCol = head.find(h => /proteina/i.test(h)) || null;
+  const estadoCol = head.find(h => /^estado$/i.test(h.trim())) || null;
+
+  const conocidas = [imgCol, tsCol, catCol, protCol, estadoCol].filter(Boolean);
+  const otras = head.filter(h => !conocidas.includes(h));
+  const filtrosExtra = [];
+  const visibles = [];
+
+  otras.forEach(col => {
+    const valores = data.map(d => d[col]).filter(v => v && v.trim() !== '');
+    const unicos = new Set(valores.map(v => v.trim()));
+    const ratio = valores.length ? unicos.size / valores.length : 1;
+    if (unicos.size > 1 && unicos.size <= 20 && ratio <= 0.6) {
+      filtrosExtra.push(col);
+    } else {
+      visibles.push(col);
+    }
+  });
+
+  return { imgCol, tsCol, catCol, protCol, estadoCol, filtrosExtra, visibles };
+}
+
+// ---------- GOOGLE DRIVE ----------
+function extraerDriveId(url) {
+  if (!url) return null;
+  let m = url.match(/\/d\/([^/?]+)/);
+  if (m) return m[1];
+  m = url.match(/[?&]id=([^&]+)/);
+  if (m) return m[1];
+  return null;
+}
+function urlMiniatura(url) {
+  const id = extraerDriveId(url);
+  if (!id) return null;
+  return `https://drive.google.com/thumbnail?id=${id}&sz=w600`;
+}
+
+function slugify(txt) {
+  return 'sec-' + txt.toString().toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-');
+}
+
+// ---------- RENDER BARRA SUPERIOR (filtros + buscador) ----------
+function renderBarraSuperior() {
+  const cont = document.getElementById('barraSuperior');
+  cont.innerHTML = '';
+
+  // Buscador
+  const grupoBuscar = document.createElement('div');
+  grupoBuscar.className = 'filtro-grupo';
+  grupoBuscar.style.flex = '1';
+  grupoBuscar.innerHTML = `<label>Buscar</label>`;
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.id = 'buscador';
+  input.placeholder = 'Buscar plato, proteina, categoria...';
+  input.value = searchTerm;
+  input.addEventListener('input', () => {
+    searchTerm = input.value.trim().toLowerCase();
+    renderSecciones(true);
+  });
+  grupoBuscar.appendChild(input);
+  cont.appendChild(grupoBuscar);
+
+  // Filtro proteina (opciones fijas del formulario)
+  if (proteinaCol) {
+    const valoresEnSheet = new Set(allData.map(d => d[proteinaCol]).filter(Boolean));
+    const opciones = [...OPCIONES_PROTEINA];
+    valoresEnSheet.forEach(v => { if (!opciones.includes(v)) opciones.push(v); });
+
+    const grupo = document.createElement('div');
+    grupo.className = 'filtro-grupo';
+    grupo.innerHTML = `<label>${escapeHTML(proteinaCol)}</label>`;
+    const select = document.createElement('select');
+    select.innerHTML = `<option value="">Todos</option>` +
+      opciones.map(v => `<option value="${escapeHTML(v)}">${escapeHTML(v)}</option>`).join('');
+    select.value = activeFilters[proteinaCol] || '';
+    select.addEventListener('change', () => {
+      activeFilters[proteinaCol] = select.value;
+      renderSecciones(false);
+    });
+    grupo.appendChild(select);
+    cont.appendChild(grupo);
+  }
+
+  // Filtros extra detectados automaticamente (por si el Sheet crece)
+  filterColsExtra.forEach(col => {
+    const valores = [...new Set(allData.map(d => d[col]).filter(v => v))].sort();
+    const grupo = document.createElement('div');
+    grupo.className = 'filtro-grupo';
+    grupo.innerHTML = `<label>${escapeHTML(col)}</label>`;
+    const select = document.createElement('select');
+    select.innerHTML = `<option value="">Todos</option>` +
+      valores.map(v => `<option value="${escapeHTML(v)}">${escapeHTML(v)}</option>`).join('');
+    select.value = activeFilters[col] || '';
+    select.addEventListener('change', () => {
+      activeFilters[col] = select.value;
+      renderSecciones(false);
+    });
+    grupo.appendChild(select);
+    cont.appendChild(grupo);
+  });
+
+  const btnLimpiar = document.createElement('button');
+  btnLimpiar.id = 'limpiarFiltros';
+  btnLimpiar.textContent = 'Limpiar filtros';
+  btnLimpiar.addEventListener('click', () => {
+    activeFilters = {};
+    searchTerm = '';
+    renderBarraSuperior();
+    renderSecciones(false);
+  });
+  cont.appendChild(btnLimpiar);
+}
+
+// ---------- NAV DE SECCIONES ----------
+function renderNavSecciones(categoriasOrdenadas) {
+  const nav = document.getElementById('navSecciones');
+  nav.innerHTML = '';
+  categoriasOrdenadas.forEach(cat => {
+    const a = document.createElement('a');
+    a.href = '#' + slugify(cat);
+    a.textContent = cat;
+    nav.appendChild(a);
+  });
+}
+
+// ---------- FILTRADO ----------
+function coincideBusqueda(item) {
+  if (!searchTerm) return true;
+  return Object.values(item).some(v => v && v.toString().toLowerCase().includes(searchTerm));
+}
+
+function pasaFiltros(item) {
+  const filtrosOk = Object.keys(activeFilters).every(col => {
+    const f = activeFilters[col];
+    return !f || item[col] === f;
+  });
+  return filtrosOk && coincideBusqueda(item);
+}
+
+// ---------- ACCIONES: publicar / ocultar / eliminar (via Apps Script) ----------
+async function enviarAccion(timestamp, accion, boton, contenedorBotones) {
+  if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL.includes('PEGA_AQUI')) {
+    alert('Falta configurar APPS_SCRIPT_URL en el codigo con la URL de tu Apps Script.');
+    return;
+  }
+  if (accion === 'eliminar') {
+    const confirmar = confirm('Esto va a borrar el producto PARA SIEMPRE del Google Sheet. ¿Confirmas?');
+    if (!confirmar) return;
+  }
+
+  const botones = contenedorBotones.querySelectorAll('button');
+  botones.forEach(b => b.disabled = true);
+  const textoOriginal = boton.textContent;
+  boton.textContent = '...';
+
+  try {
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // evita preflight CORS con Apps Script
+      body: JSON.stringify({ clave: CLAVE_SECRETA, timestamp: timestamp, accion: accion })
+    });
+    const data = await resp.json();
+    if (!data.ok) {
+      alert('No se pudo completar la accion: ' + (data.error || 'error desconocido'));
+      botones.forEach(b => b.disabled = false);
+      boton.textContent = textoOriginal;
+      return;
+    }
+    // Google tarda unos segundos/minutos en actualizar el CSV publicado, recargamos igual
+    setTimeout(() => cargarDatos(false), 2000);
+  } catch (err) {
+    alert('Error de conexion al intentar guardar el cambio: ' + err.message);
+    botones.forEach(b => b.disabled = false);
+    boton.textContent = textoOriginal;
+  }
+}
+
+function crearBotonesAccion(item) {
+  const cont = document.createElement('div');
+  cont.className = 'acciones';
+  const estadoActual = estadoCol ? (item[estadoCol] || '').trim().toUpperCase() : '';
+  const timestamp = timeCol ? item[timeCol] : null;
+
+  const definiciones = [
+    { clase: 'publicar', icono: '✓', accion: 'publicar', titulo: 'Publicar en la pagina', activoSi: 'PUBLICADO' },
+    { clase: 'ocultar', icono: '━', accion: 'ocultar', titulo: 'Ocultar de la pagina', activoSi: 'OCULTO' },
+    { clase: 'eliminar', icono: '✕', accion: 'eliminar', titulo: 'Eliminar definitivamente', activoSi: null }
+  ];
+
+  definiciones.forEach(def => {
+    const btn = document.createElement('button');
+    btn.className = 'accion-btn ' + def.clase + (estadoActual === def.activoSi ? ' activo' : '');
+    btn.textContent = def.icono;
+    btn.title = def.titulo;
+    btn.disabled = !timestamp;
+    btn.addEventListener('click', () => enviarAccion(timestamp, def.accion, btn, cont));
+    cont.appendChild(btn);
+  });
+
+  return cont;
+}
+
+// ---------- RENDER TARJETA ----------
+function crearTarjeta(item) {
+  const card = document.createElement('div');
+  card.className = 'card';
+
+  const imgWrap = document.createElement('div');
+  imgWrap.className = 'card-imagen';
+  const rawUrl = imageCol ? item[imageCol] : null;
+  const thumb = urlMiniatura(rawUrl);
+
+  if (thumb) {
+    const img = document.createElement('img');
+    img.src = thumb;
+    img.alt = item[displayCols[0]] || 'Imagen';
+    img.loading = 'lazy';
+    img.addEventListener('click', () => abrirModal(thumb));
+    img.onerror = () => {
+      const linkSeguro = esLinkDriveSeguro(rawUrl) ? escapeHTML(rawUrl) : null;
+      imgWrap.innerHTML = linkSeguro
+        ? `<div class="sin-imagen">Imagen no disponible<br><a href="${linkSeguro}" target="_blank" rel="noopener noreferrer">Ver enlace original</a></div>`
+        : `<div class="sin-imagen">Imagen no disponible</div>`;
+    };
+    imgWrap.appendChild(img);
+  } else {
+    imgWrap.innerHTML = `<div class="sin-imagen">Sin imagen</div>`;
+  }
+  card.appendChild(imgWrap);
+
+  const body = document.createElement('div');
+  body.className = 'card-body';
+
+  const badges = document.createElement('div');
+  badges.className = 'badges';
+  if (proteinaCol && item[proteinaCol]) {
+    const b = document.createElement('span');
+    b.className = 'badge';
+    b.textContent = item[proteinaCol];
+    badges.appendChild(b);
+  }
+  filterColsExtra.forEach(col => {
+    if (item[col]) {
+      const b = document.createElement('span');
+      b.className = 'badge';
+      b.textContent = item[col];
+      badges.appendChild(b);
+    }
+  });
+  if (badges.children.length) body.appendChild(badges);
+
+  displayCols.forEach((col, idx) => {
+    if (!item[col]) return;
+    const campo = document.createElement('div');
+    campo.className = 'campo' + (idx === 0 ? ' principal' : '');
+    if (idx === 0) {
+      campo.textContent = item[col];
+    } else {
+      campo.innerHTML = `<span class="etiqueta">${escapeHTML(col)}</span>${escapeHTML(item[col])}`;
+    }
+    body.appendChild(campo);
+  });
+
+  if (timeCol && item[timeCol]) {
+    const ts = document.createElement('div');
+    ts.className = 'marca-temporal';
+    ts.textContent = 'Registrado: ' + item[timeCol];
+    body.appendChild(ts);
+  }
+
+  body.appendChild(crearBotonesAccion(item));
+
+  card.appendChild(body);
+  return card;
+}
+
+// ---------- RENDER SECCIONES ----------
+function renderSecciones(hacerScroll) {
+  const cont = document.getElementById('contenedorSecciones');
+  const mensajeGlobal = document.getElementById('mensaje');
+  cont.innerHTML = '';
+
+  // Determinar categorias presentes, respetando el orden fijo y agregando las nuevas al final
+  const categoriasEnDatos = categoriaCol
+    ? [...new Set(allData.map(d => d[categoriaCol]).filter(Boolean))]
+    : [];
+  const categoriasOrdenadas = [
+    ...ORDEN_CATEGORIAS.filter(c => categoriasEnDatos.includes(c)),
+    ...categoriasEnDatos.filter(c => !ORDEN_CATEGORIAS.includes(c))
+  ];
+
+  renderNavSecciones(categoriasEnDatos.length ? categoriasOrdenadas : []);
+
+  let totalVisible = 0;
+  let primerCoincidencia = null;
+
+  if (!categoriaCol) {
+    // Sin columna de categoria: una sola grilla plana
+    const filtrados = allData.filter(pasaFiltros);
+    totalVisible = filtrados.length;
+    const grid = document.createElement('div');
+    grid.className = 'grid';
+    filtrados.forEach(item => {
+      const card = crearTarjeta(item);
+      if (searchTerm && !primerCoincidencia) primerCoincidencia = card;
+      grid.appendChild(card);
+    });
+    cont.appendChild(grid);
+  } else {
+    categoriasOrdenadas.forEach(cat => {
+      const seccion = document.createElement('div');
+      seccion.className = 'seccion';
+      seccion.id = slugify(cat);
+
+      const itemsCategoria = allData.filter(d => d[categoriaCol] === cat);
+      const filtrados = itemsCategoria.filter(pasaFiltros);
+      totalVisible += filtrados.length;
+
+      const titulo = document.createElement('div');
+      titulo.className = 'seccion-titulo';
+      titulo.innerHTML = `${escapeHTML(cat)} <span class="conteo">(${filtrados.length})</span>`;
+      seccion.appendChild(titulo);
+
+      if (filtrados.length === 0) {
+        const vacio = document.createElement('div');
+        vacio.className = 'seccion-vacia';
+        vacio.textContent = 'No hay platos en esta seccion con los filtros/busqueda actuales.';
+        seccion.appendChild(vacio);
+      } else {
+        const grid = document.createElement('div');
+        grid.className = 'grid';
+        filtrados.forEach(item => {
+          const card = crearTarjeta(item);
+          if (searchTerm && !primerCoincidencia) primerCoincidencia = card;
+          grid.appendChild(card);
+        });
+        seccion.appendChild(grid);
+      }
+
+      cont.appendChild(seccion);
+    });
+  }
+
+  document.getElementById('contador').textContent = `${totalVisible} de ${allData.length} registros`;
+
+  if (allData.length === 0) {
+    mensajeGlobal.style.display = 'block';
+    mensajeGlobal.textContent = 'No hay datos para mostrar todavia.';
+  } else {
+    mensajeGlobal.style.display = 'none';
+  }
+
+  if (hacerScroll && searchTerm && primerCoincidencia) {
+    primerCoincidencia.classList.add('resaltado');
+    primerCoincidencia.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setTimeout(() => primerCoincidencia.classList.remove('resaltado'), 2500);
+  }
+}
+
+// ---------- MODAL DE IMAGEN ----------
+function abrirModal(thumbUrl) {
+  document.getElementById('modalImg').src = thumbUrl;
+  document.getElementById('modalOverlay').style.display = 'flex';
+}
+document.querySelector('#modalOverlay .cerrar').addEventListener('click', cerrarModal);
+document.getElementById('modalOverlay').addEventListener('click', (e) => {
+  if (e.target.id === 'modalOverlay') cerrarModal();
+});
+function cerrarModal() {
+  document.getElementById('modalOverlay').style.display = 'none';
+  document.getElementById('modalImg').src = '';
+}
+
+// ---------- CARGA DE DATOS ----------
+async function cargarDatos(esAutomatico) {
+  const status = document.getElementById('status');
+  if (!esAutomatico) status.textContent = 'Actualizando...';
+
+  try {
+    const resp = await fetch(CSV_URL + '&_=' + Date.now());
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const text = await resp.text();
+    const rows = parseCSV(text);
+    if (rows.length < 1) throw new Error('Sheet vacio');
+
+    const { head, data } = rowsToObjects(rows);
+    headers = head;
+    allData = data;
+
+    const analisis = analizarColumnas(head, data);
+    imageCol = analisis.imgCol;
+    timeCol = analisis.tsCol;
+    categoriaCol = analisis.catCol;
+    proteinaCol = analisis.protCol;
+    estadoCol = analisis.estadoCol;
+    filterColsExtra = analisis.filtrosExtra;
+    displayCols = analisis.visibles;
+
+    renderBarraSuperior();
+    renderSecciones(false);
+
+    const ahora = new Date().toLocaleTimeString('es-PE');
+    status.textContent = 'Ultima actualizacion: ' + ahora;
+  } catch (err) {
+    status.textContent = 'Error al cargar datos';
+    if (!esAutomatico) {
+      document.getElementById('mensaje').style.display = 'block';
+      document.getElementById('mensaje').textContent =
+        'No se pudo cargar el Google Sheet. Verifica que el link siga publicado como CSV. (' + err.message + ')';
+    }
+    console.error(err);
+  }
+}
+
+document.getElementById('refreshBtn').addEventListener('click', () => cargarDatos(false));
+
+cargarDatos(false);
+setInterval(() => cargarDatos(true), AUTO_REFRESH_MS);
+</script>
+
+</body>
+</html>
